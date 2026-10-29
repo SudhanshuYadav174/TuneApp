@@ -18,9 +18,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
-app.use(helmet());
-app.use(compression());
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(cors({ origin: '*' }));
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path.includes('/audio')) return false; // don't compress audio streams
+    return compression.filter(req, res);
+  }
+}));
 app.use(express.json());
 
 // Rate limiting to prevent abuse
