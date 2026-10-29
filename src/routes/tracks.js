@@ -68,20 +68,36 @@ router.get('/:id/audio', async (req, res) => {
   }
 });
 
-// GET /api/tracks/:id/stream
+// GET /api/tracks/:id/stream - Returns direct M4A audio stream URL
 router.get('/:id/stream', async (req, res) => {
   try {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: 'Track ID required' });
 
-    const host = req.get('host');
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const audioUrl = `${protocol}://${host}/api/tracks/${id}/audio`;
+    const cached = getCached(id);
+    if (cached) return res.json({ url: cached, cached: true });
+
+    const videoUrl = `https://www.youtube.com/watch?v=${id}`;
+    const info = await ytdlClient.getInfo(videoUrl);
+
+    // Filter audio formats, prefer M4A/MP4 for universal mobile compatibility
+    const audioFormats = info.formats.filter(
+      (f) => f.hasAudio && (!f.hasVideo || f.mimeType?.includes('audio'))
+    );
+
+    const m4a = audioFormats.find((f) => f.mimeType?.includes('mp4') && f.url);
+    const best = m4a || audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0))[0] || info.formats.find(f => f.url);
+
+    if (!best || !best.url) {
+      return res.status(404).json({ error: 'No audio stream available' });
+    }
+
+    setCache(id, best.url);
 
     res.json({
-      url: audioUrl,
-      quality: 'highestaudio',
-      mimeType: 'audio/mp4',
+      url: best.url,
+      quality: best.audioBitrate ? `${best.audioBitrate}kbps` : 'standard',
+      mimeType: best.mimeType || 'audio/mp4',
     });
   } catch (err) {
     console.error(`Stream error [${req.params.id}]:`, err.message);
