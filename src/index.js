@@ -48,7 +48,7 @@ app.use('/api', systemRoutes);
 app.get('/', (req, res) => {
   res.json({
     name: 'TuneCraft API',
-    version: '1.1.0-tv-visionos',
+    version: '1.2.0-visionos-pure',
     status: 'running',
     endpoints: ['/api/search', '/api/tracks', '/api/health'],
   });

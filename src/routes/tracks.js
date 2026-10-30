@@ -8,9 +8,11 @@ const { Ytdl, Client } = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const router = express.Router();
 
-// Initialize Ytdl with Tv and VisionOS clients to ensure zero datacenter IP blocks and direct M4A streaming
+// Initialize Ytdl with VisionOS client ONLY.
+// VisionOS (Apple Vision Pro app) NEVER requires player script JS solving (needsPlayer: false)
+// and returns direct unciphered googlevideo.com audio URLs on cloud/datacenter IPs.
 const ytdlClient = new Ytdl({
-  clients: [Client.Tv, Client.VisionOS, Client.WebEmbedded],
+  clients: [Client.VisionOS],
 });
 
 // Stream URL cache
