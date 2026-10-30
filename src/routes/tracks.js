@@ -4,15 +4,15 @@
  * Uses @distube/ytdl-core with automatic format fallback.
  */
 const express = require('express');
-const { Ytdl, Client } = require('@distube/ytdl-core');
+const { Ytdl, DEFAULT_CLIENTS } = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const router = express.Router();
 
-// Initialize Ytdl with VisionOS client ONLY.
-// VisionOS (Apple Vision Pro app) NEVER requires player script JS solving (needsPlayer: false)
-// and returns direct unciphered googlevideo.com audio URLs on cloud/datacenter IPs.
+// Initialize Ytdl with DEFAULT_CLIENTS (VisionOS, WebEmbedded, Tv, Mweb, WebCreator)
+// with Cookie support if set in environment (YT_COOKIE)
 const ytdlClient = new Ytdl({
-  clients: [Client.VisionOS],
+  clients: DEFAULT_CLIENTS,
+  cookie: process.env.YT_COOKIE || undefined,
 });
 
 // Stream URL cache
