@@ -8,10 +8,10 @@ const { Ytdl, DEFAULT_CLIENTS } = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const router = express.Router();
 
-// Initialize Ytdl with DEFAULT_CLIENTS (VisionOS, WebEmbedded, Tv, Mweb, WebCreator)
-// with Cookie support if set in environment (YT_COOKIE)
+// Initialize Ytdl with VisionOS and Tv clients for fast, reliable, bot-proof extraction
+// with optional Cookie support if set in environment (YT_COOKIE)
 const ytdlClient = new Ytdl({
-  clients: DEFAULT_CLIENTS,
+  clients: ['visionos', 'tv'],
   cookie: process.env.YT_COOKIE || undefined,
 });
 
