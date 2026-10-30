@@ -8,10 +8,11 @@ const { Ytdl, DEFAULT_CLIENTS } = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const router = express.Router();
 
-// Initialize Ytdl with VisionOS and Tv clients for fast, reliable, bot-proof extraction
-// with optional Cookie support if set in environment (YT_COOKIE)
+// Initialize Ytdl with VisionOS client exclusively.
+// VisionOS is the only client with needsPlayer: false (no JS worker/solver needed),
+// which completely prevents the "Could not prepare player" 10s worker timeout on Render.
 const ytdlClient = new Ytdl({
-  clients: ['visionos', 'tv'],
+  clients: ['visionos'],
   cookie: process.env.YT_COOKIE || undefined,
 });
 
