@@ -4,11 +4,14 @@
  * Uses @distube/ytdl-core with automatic format fallback.
  */
 const express = require('express');
-const { Ytdl, chooseFormat } = require('@distube/ytdl-core');
+const { Ytdl, Client } = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const router = express.Router();
 
-const ytdlClient = new Ytdl();
+// Initialize Ytdl with Tv and VisionOS clients to ensure zero datacenter IP blocks and direct M4A streaming
+const ytdlClient = new Ytdl({
+  clients: [Client.Tv, Client.VisionOS, Client.WebEmbedded],
+});
 
 // Stream URL cache
 const streamCache = new Map();
