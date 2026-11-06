@@ -55,6 +55,7 @@ async function extractVisionOS(videoId) {
       'X-YouTube-Client-Name': '101',
       'X-YouTube-Client-Version': '1.02',
       Origin: 'https://www.youtube.com',
+      Cookie: 'SOCS=CAI',
       ...(visitorData ? { 'X-Goog-Visitor-Id': visitorData } : {}),
     },
     body: JSON.stringify({
@@ -66,6 +67,8 @@ async function extractVisionOS(videoId) {
           deviceModel: 'RealityDevice17,1',
           osName: 'visionOS',
           osVersion: '26.5.23O471',
+          userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
           hl: 'en',
           gl: 'US',
           utcOffsetMinutes: 0,
@@ -75,6 +78,11 @@ async function extractVisionOS(videoId) {
       videoId: videoId,
       contentCheckOk: true,
       racyCheckOk: true,
+      playbackContext: {
+        contentPlaybackContext: {
+          html5Preference: 'HTML5_PREF_WANTS',
+        },
+      },
     }),
     signal: AbortSignal.timeout(6000),
   });
