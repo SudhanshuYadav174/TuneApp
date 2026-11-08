@@ -8,9 +8,8 @@ const { Ytdl } = require('@distube/ytdl-core');
 const yts = require('yt-search');
 const router = express.Router();
 
-// Fallback Ytdl client
+// Fallback Ytdl client using default robust multi-client chain (visionos, web_embedded, tv, mweb, web_creator)
 const ytdlClient = new Ytdl({
-  clients: ['visionos', 'web_embedded'],
   cookie: process.env.YT_COOKIE || undefined,
 });
 
@@ -119,6 +118,101 @@ function setCache(key, data) {
     streamCache.delete(firstKey);
   }
 }
+
+// GET /api/tracks/visitor-id - Returns fresh YouTube visitor token for mobile devices
+router.get('/visitor-id', async (req, res) => {
+  try {
+    const visitorData = await getVisitorData();
+    if (visitorData) {
+      return res.json({ visitorData });
+    }
+    return res.status(503).json({ error: 'Visitor data unavailable' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/tracks/:id/audio - High-speed audio streaming proxy
+// Solves YouTube IP binding and rate limiting by proxying through server's signed connection
+router.get('/:id/audio', async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).send('Track ID required');
+
+  try {
+    let streamUrl = getCached(id);
+    if (!streamUrl) {
+      try {
+        const stream = await extractVisionOS(id);
+        streamUrl = stream.url;
+        setCache(id, streamUrl);
+      } catch (visionErr) {
+        console.warn(`Audio proxy: VisionOS failed for [${id}], trying YTDL:`, visionErr.message);
+        const videoUrl = `https://www.youtube.com/watch?v=${id}`;
+        const info = await ytdlClient.getInfo(videoUrl);
+        const audioFormats = info.formats.filter(
+          (f) => f.hasAudio && (!f.hasVideo || f.mimeType?.includes('audio'))
+        );
+        const m4a = audioFormats.find((f) => f.mimeType?.includes('mp4') && f.url);
+        const best =
+          m4a ||
+          audioFormats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0))[0] ||
+          info.formats.find((f) => f.url);
+        if (best && best.url) {
+          streamUrl = best.url;
+          setCache(id, streamUrl);
+        }
+      }
+    }
+
+    if (!streamUrl) {
+      return res.status(404).send('Audio stream not found');
+    }
+
+    // Forward range header from ExoPlayer for smooth seeking and instant playback
+    const headers = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    };
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range;
+    }
+
+    const upstream = await fetch(streamUrl, {
+      headers,
+      signal: AbortSignal.timeout(15000),
+    });
+
+    res.status(upstream.status);
+
+    const copyHeaders = [
+      'content-type',
+      'content-length',
+      'content-range',
+      'accept-ranges',
+      'cache-control',
+    ];
+    for (const h of copyHeaders) {
+      const val = upstream.headers.get(h);
+      if (val) res.setHeader(h, val);
+    }
+    res.setHeader('Accept-Ranges', 'bytes');
+    if (!res.getHeader('content-type')) {
+      res.setHeader('Content-Type', 'audio/mp4');
+    }
+
+    const { Readable } = require('stream');
+    if (upstream.body) {
+      Readable.fromWeb(upstream.body).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    console.error('Audio proxy error:', err.message);
+    if (!res.headersSent) {
+      res.status(500).send('Streaming error: ' + err.message);
+    }
+  }
+});
 
 // GET /api/tracks/:id/stream - Returns direct M4A audio stream URL
 router.get('/:id/stream', async (req, res) => {
